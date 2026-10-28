@@ -7,9 +7,6 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,8 +14,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -37,23 +32,19 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Commit Build Log on Failure
-        if: failure()
+      - name: Prepare APK Output
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B diagnostics
-          git add build.log -f
-          git commit -m "Auto-captured build failure log" || true
-          git push -f origin diagnostics || true
+          mkdir -p apk_output
+          find app/build/outputs -type f -name "*.apk" -exec cp {} apk_output/ScrollGuard-debug.apk \;
+          echo "Listing copied APK:"
+          ls -lh apk_output/
 
       - name: Upload Downloadable APK Artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ScrollGuard-debug-apk
-          path: "**/*.apk"
+          path: apk_output/ScrollGuard-debug.apk
           if-no-files-found: error
           retention-days: 30
