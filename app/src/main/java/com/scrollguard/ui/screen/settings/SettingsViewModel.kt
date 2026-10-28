@@ -31,29 +31,61 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+    private data class LimitsAndWage(
+        val reelLimit: Int,
+        val pickupLimit: Int,
+        val wage: Float
+    )
+
+    private data class BedtimeSettings(
+        val bedtimeEnabled: Boolean,
+        val bHour: Int,
+        val bMin: Int
+    )
+
+    private data class EyeAndTheme(
+        val eyeEnabled: Boolean,
+        val eyeMin: Int,
+        val theme: Int
+    )
+
     init {
         viewModelScope.launch {
-            combine(
+            val limitsFlow = combine(
                 settingsRepository.dailyReelLimit,
                 settingsRepository.dailyPickupLimit,
-                settingsRepository.hourlyWage,
+                settingsRepository.hourlyWage
+            ) { reelLimit, pickupLimit, wage ->
+                LimitsAndWage(reelLimit, pickupLimit, wage)
+            }
+
+            val bedtimeFlow = combine(
                 settingsRepository.isBedtimeModeEnabled,
                 settingsRepository.bedtimeHour,
-                settingsRepository.bedtimeMinute,
+                settingsRepository.bedtimeMinute
+            ) { bedtimeEnabled, bHour, bMin ->
+                BedtimeSettings(bedtimeEnabled, bHour, bMin)
+            }
+
+            val eyeAndThemeFlow = combine(
                 settingsRepository.isEyeStrainEnabled,
                 settingsRepository.eyeStrainIntervalMin,
                 settingsRepository.themeMode
-            ) { reelLimit, pickupLimit, wage, bedtimeEnabled, bHour, bMin, eyeEnabled, eyeMin, theme ->
+            ) { eyeEnabled, eyeMin, theme ->
+                EyeAndTheme(eyeEnabled, eyeMin, theme)
+            }
+
+            combine(limitsFlow, bedtimeFlow, eyeAndThemeFlow) { limits, bedtime, eyeTheme ->
                 SettingsUiState(
-                    dailyReelLimit = reelLimit,
-                    dailyPickupLimit = pickupLimit,
-                    hourlyWage = wage,
-                    isBedtimeModeEnabled = bedtimeEnabled,
-                    bedtimeHour = bHour,
-                    bedtimeMinute = bMin,
-                    isEyeStrainEnabled = eyeEnabled,
-                    eyeStrainIntervalMin = eyeMin,
-                    themeMode = theme
+                    dailyReelLimit = limits.reelLimit,
+                    dailyPickupLimit = limits.pickupLimit,
+                    hourlyWage = limits.wage,
+                    isBedtimeModeEnabled = bedtime.bedtimeEnabled,
+                    bedtimeHour = bedtime.bHour,
+                    bedtimeMinute = bedtime.bMin,
+                    isEyeStrainEnabled = eyeTheme.eyeEnabled,
+                    eyeStrainIntervalMin = eyeTheme.eyeMin,
+                    themeMode = eyeTheme.theme
                 )
             }.collect {
                 _uiState.value = it

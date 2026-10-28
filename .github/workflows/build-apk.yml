@@ -37,21 +37,18 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x ./gradlew
+          set -o pipefail
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
-      - name: Capture Failure Diagnostic Log
-        if: failure()
+      - name: Publish Build Summary
+        if: always()
         run: |
-          # 1. Upload to ephemeral paste
-          curl -sF "file=@build.log" https://file.io || true
-
-          # 2. Push to diagnostics branch
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B diagnostics
-          git add build.log -f
-          git commit -m "Auto-captured build failure log" || true
-          git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git diagnostics || true
+          if [ -f build.log ]; then
+            echo "### Build Execution Summary" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 80 build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Prepare APK Output
         if: success()

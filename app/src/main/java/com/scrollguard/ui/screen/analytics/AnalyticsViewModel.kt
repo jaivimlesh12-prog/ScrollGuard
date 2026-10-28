@@ -38,35 +38,64 @@ class AnalyticsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AnalyticsUiState())
     val uiState: StateFlow<AnalyticsUiState> = _uiState.asStateFlow()
 
+    private data class ReelStats(
+        val totalReels: Int,
+        val igReels: Int,
+        val ytShorts: Int
+    )
+
+    private data class GeneralStats(
+        val screenTime: Long,
+        val wage: Float,
+        val gameTime: Long,
+        val gameSessions: Int
+    )
+
     init {
         viewModelScope.launch {
-            combine(
+            val reelStatsFlow = combine(
                 reelRepository.getTotalReelsToday(),
                 reelRepository.getTotalReelsByApp(Constants.INSTAGRAM_PACKAGE),
-                reelRepository.getTotalReelsByApp(Constants.YOUTUBE_PACKAGE),
+                reelRepository.getTotalReelsByApp(Constants.YOUTUBE_PACKAGE)
+            ) { reels, igReels, ytShorts ->
+                ReelStats(
+                    totalReels = reels ?: 0,
+                    igReels = igReels ?: 0,
+                    ytShorts = ytShorts ?: 0
+                )
+            }
+
+            val generalStatsFlow = combine(
                 screenTimeRepository.getTotalScreenTimeToday(),
                 settingsRepository.hourlyWage,
                 gameRepository.getTotalGameTimeToday(),
                 gameRepository.getGameSessionCountToday()
-            ) { reels, igReels, ytShorts, screenTime, wage, gameTime, gameSessions ->
-                val totalR = reels ?: 0
-                // Calculate scroll distance: each reel is approx 2400px @ 440 dpi ~= 0.138 meters
-                val distanceMeters = totalR * 0.15f
+            ) { screenTime, wage, gameTime, gameSessions ->
+                GeneralStats(
+                    screenTime = screenTime ?: 0L,
+                    wage = wage,
+                    gameTime = gameTime ?: 0L,
+                    gameSessions = gameSessions ?: 0
+                )
+            }
+
+            combine(reelStatsFlow, generalStatsFlow) { reels, gen ->
+                val distanceMeters = reels.totalReels * 0.15f
                 val distanceKm = distanceMeters / 1000f
 
-                val timeHours = (screenTime ?: 0L) / (1000f * 60 * 60)
-                val cost = timeHours * wage
+                val timeHours = gen.screenTime / (1000f * 60 * 60)
+                val cost = timeHours * gen.wage
 
                 AnalyticsUiState(
-                    totalReels = totalR,
-                    instagramReels = igReels ?: 0,
-                    youtubeShorts = ytShorts ?: 0,
+                    totalReels = reels.totalReels,
+                    instagramReels = reels.igReels,
+                    youtubeShorts = reels.ytShorts,
                     scrollDistanceKm = distanceKm,
-                    screenTimeMs = screenTime ?: 0L,
-                    hourlyWage = wage,
+                    screenTimeMs = gen.screenTime,
+                    hourlyWage = gen.wage,
                     wastedTimeCost = cost,
-                    gameTimeMs = gameTime ?: 0L,
-                    gameSessionsCount = gameSessions ?: 0
+                    gameTimeMs = gen.gameTime,
+                    gameSessionsCount = gen.gameSessions
                 )
             }.collect {
                 _uiState.value = it

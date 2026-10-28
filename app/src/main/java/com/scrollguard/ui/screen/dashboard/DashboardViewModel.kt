@@ -49,25 +49,56 @@ class DashboardViewModel @Inject constructor(
         loadDashboardData()
     }
 
+    private data class BaseStats(
+        val totalTime: Long,
+        val reels: Int,
+        val reelLimit: Int,
+        val pickups: Int
+    )
+
+    private data class ExtraStats(
+        val gameTime: Long,
+        val topApps: List<ScreenTimeEntity>,
+        val focusActive: Boolean
+    )
+
     private fun loadDashboardData() {
         viewModelScope.launch {
-            combine(
+            val baseStatsFlow = combine(
                 screenTimeRepository.getTotalScreenTimeToday(),
                 reelRepository.getTotalReelsToday(),
                 settingsRepository.dailyReelLimit,
-                screenTimeRepository.getPickupCountToday(),
+                screenTimeRepository.getPickupCountToday()
+            ) { totalTime, reels, reelLimit, pickups ->
+                BaseStats(
+                    totalTime = totalTime ?: 0L,
+                    reels = reels ?: 0,
+                    reelLimit = reelLimit,
+                    pickups = pickups ?: 0
+                )
+            }
+
+            val extraStatsFlow = combine(
                 gameRepository.getTotalGameTimeToday(),
                 screenTimeRepository.getTopAppsToday(5),
                 settingsRepository.isFocusModeActive
-            ) { totalTime, reels, reelLimit, pickups, gameTime, topApps, focusActive ->
-                DashboardUiState(
-                    totalScreenTimeMs = totalTime ?: 0L,
-                    totalReels = reels ?: 0,
-                    reelLimit = reelLimit,
-                    totalPickups = pickups ?: 0,
-                    totalGameTimeMs = gameTime ?: 0L,
+            ) { gameTime, topApps, focusActive ->
+                ExtraStats(
+                    gameTime = gameTime ?: 0L,
                     topApps = topApps,
-                    isFocusModeActive = focusActive,
+                    focusActive = focusActive
+                )
+            }
+
+            combine(baseStatsFlow, extraStatsFlow) { base, extra ->
+                DashboardUiState(
+                    totalScreenTimeMs = base.totalTime,
+                    totalReels = base.reels,
+                    reelLimit = base.reelLimit,
+                    totalPickups = base.pickups,
+                    totalGameTimeMs = extra.gameTime,
+                    topApps = extra.topApps,
+                    isFocusModeActive = extra.focusActive,
                     isFloatingOverlayActive = true,
                     streakDays = 5
                 )
