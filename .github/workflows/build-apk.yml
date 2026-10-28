@@ -38,27 +38,15 @@ jobs:
         run: |
           chmod +x ./gradlew
           set -o pipefail
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
 
       - name: Report Build Error
         if: failure()
         run: |
-          echo "=== WHAT WENT WRONG ==="
-          grep -A 15 "* What went wrong:" build.log | while IFS= read -r line; do
+          echo "=== KOTLIN ERRORS ==="
+          grep -E "(\.kt:[0-9]+|Unresolved reference|None of the following|Type mismatch)" build.log | head -n 30 | while IFS= read -r line; do
             line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
-            [ -n "$line_clean" ] && echo "::error title=WhatWentWrong::$line_clean"
-          done
-
-          echo "=== CAUSED BY ==="
-          grep -m 5 -A 5 "Caused by:" build.log | while IFS= read -r line; do
-            line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
-            [ -n "$line_clean" ] && echo "::error title=CausedBy::$line_clean"
-          done
-
-          echo "=== COMPILER ERRORS ==="
-          grep -m 15 -E "(e: [^ ]+\.kt|error: )" build.log | while IFS= read -r line; do
-            line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
-            [ -n "$line_clean" ] && echo "::error title=CompilerError::$line_clean"
+            [ -n "$line_clean" ] && echo "::error title=KotlinError::$line_clean"
           done
 
       - name: Upload Build Log Artifact
