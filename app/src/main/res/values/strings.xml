@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ScrollGuard</string>
+    <string name="accessibility_service_description">ScrollGuard monitors scroll events to count Instagram Reels and YouTube Shorts.</string>
+    <string name="notification_listener_description">ScrollGuard counts notifications from each app to help you identify the noisiest ones.</string>
+</resources>
