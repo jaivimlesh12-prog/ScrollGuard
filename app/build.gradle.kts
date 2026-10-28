@@ -94,7 +94,7 @@ dependencies {
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.51.1")
+    ksp("com.google.dagger:hilt-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // DataStore Preferences
@@ -105,10 +105,6 @@ dependencies {
 
     // Google Play Services Location (Geofencing)
     implementation("com.google.android.gms:play-services-location:21.3.0")
-
-    // Vico Charts
-    implementation("com.patrykandpatrick.vico:vico-compose:2.0.0-beta.2")
-    implementation("com.patrykandpatrick.vico:vico-compose-m3:2.0.0-beta.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
