@@ -45,11 +45,10 @@ jobs:
         run: |
           echo "=== TAIL OF BUILD LOG ==="
           tail -n 50 build.log
-          ERROR_MSG=$(grep -m 1 -E "(e: |error: |FAILURE: |What went wrong:)" build.log || true)
-          if [ -z "$ERROR_MSG" ]; then
-            ERROR_MSG="Build failed. See gradle-build-log artifact for details."
-          fi
-          echo "::error title=Gradle Failure::$ERROR_MSG"
+          tail -n 25 build.log | while IFS= read -r line; do
+            line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
+            [ -n "$line_clean" ] && echo "::error title=Log::$line_clean"
+          done
 
       - name: Upload Build Log Artifact
         if: always()
