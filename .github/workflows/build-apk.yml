@@ -43,11 +43,22 @@ jobs:
       - name: Report Build Error
         if: failure()
         run: |
-          echo "=== TAIL OF BUILD LOG ==="
-          tail -n 50 build.log
-          tail -n 25 build.log | while IFS= read -r line; do
+          echo "=== WHAT WENT WRONG ==="
+          grep -A 15 "* What went wrong:" build.log | while IFS= read -r line; do
             line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
-            [ -n "$line_clean" ] && echo "::error title=Log::$line_clean"
+            [ -n "$line_clean" ] && echo "::error title=WhatWentWrong::$line_clean"
+          done
+
+          echo "=== CAUSED BY ==="
+          grep -m 5 -A 5 "Caused by:" build.log | while IFS= read -r line; do
+            line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
+            [ -n "$line_clean" ] && echo "::error title=CausedBy::$line_clean"
+          done
+
+          echo "=== COMPILER ERRORS ==="
+          grep -m 15 -E "(e: [^ ]+\.kt|error: )" build.log | while IFS= read -r line; do
+            line_clean=$(echo "$line" | tr -d '\r' | sed 's/[^a-zA-Z0-9 :.,()/_=-]//g')
+            [ -n "$line_clean" ] && echo "::error title=CompilerError::$line_clean"
           done
 
       - name: Upload Build Log Artifact
