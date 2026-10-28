@@ -7,6 +7,9 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,6 +17,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -32,14 +37,20 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
-      - name: Locate Built APKs
+      - name: Commit Build Log on Failure
+        if: failure()
         run: |
-          echo "Listing all APKs found:"
-          find . -name "*.apk" -type f
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B diagnostics
+          git add build.log -f
+          git commit -m "Auto-captured build failure log" || true
+          git push -f origin diagnostics || true
 
       - name: Upload Downloadable APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ScrollGuard-debug-apk
