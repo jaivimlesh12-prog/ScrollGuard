@@ -7,6 +7,10 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,15 +36,27 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x ./gradlew
-          set -o pipefail
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
-      - name: Print Error If Failed
+      - name: Post Error Log to GitHub Issues
         if: failure()
-        run: |
-          echo "==================== BUILD LOG ERRORS ===================="
-          grep -E "(e: |FAILURE:|BUILD FAILED|\* What went wrong:|\* Exception is:)" -A 10 build.log || tail -n 80 build.log
-          echo "=========================================================="
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let log = "No log found";
+            try {
+              log = fs.readFileSync('build.log', 'utf8');
+              log = log.slice(-4000); // Last 4000 chars of build log
+            } catch(e) {
+              log = e.toString();
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Build Diagnostics: Compilation Errors',
+              body: '```\n' + log + '\n```'
+            });
 
       - name: Upload Downloadable APK Artifact
         if: success()
