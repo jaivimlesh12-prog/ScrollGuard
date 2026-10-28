@@ -32,14 +32,18 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
-      - name: Locate Built APKs
+      - name: Print Error If Failed
+        if: failure()
         run: |
-          echo "Found APK files:"
-          find app/build/outputs/apk -name "*.apk"
+          echo "==================== BUILD LOG ERRORS ===================="
+          grep -E "(e: |FAILURE:|BUILD FAILED|\* What went wrong:|\* Exception is:)" -A 10 build.log || tail -n 80 build.log
+          echo "=========================================================="
 
       - name: Upload Downloadable APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ScrollGuard-debug-apk
