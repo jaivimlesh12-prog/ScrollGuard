@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate()
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val isOnboardingComplete = runBlocking {
