@@ -30,14 +30,31 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Debug APK
+        id: gradle_build
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Report Build Output
+        if: always()
+        run: |
+          echo "### Gradle Build Output Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 build.log >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Downloadable APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ScrollGuard-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
