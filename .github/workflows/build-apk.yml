@@ -40,15 +40,24 @@ jobs:
           set -o pipefail
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
-      - name: Publish Build Summary
-        if: always()
+      - name: Report Build Error
+        if: failure()
         run: |
-          if [ -f build.log ]; then
-            echo "### Build Execution Summary" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 80 build.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "=== TAIL OF BUILD LOG ==="
+          tail -n 50 build.log
+          ERROR_MSG=$(grep -m 1 -E "(e: |error: |FAILURE: |What went wrong:)" build.log || true)
+          if [ -z "$ERROR_MSG" ]; then
+            ERROR_MSG="Build failed. See gradle-build-log artifact for details."
           fi
+          echo "::error title=Gradle Failure::$ERROR_MSG"
+
+      - name: Upload Build Log Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Prepare APK Output
         if: success()
